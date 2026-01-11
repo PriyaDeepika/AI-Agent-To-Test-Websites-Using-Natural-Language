@@ -13,5 +13,6 @@ def run_agent(instruction: str):
     return {
         "status": "success",
         "parsed_action": result["parsed_command"],
-        "structured_command": result["structured_command"]
+        "full_playwright_script": result["full_playwright_script"],
+        "execution_result": result["execution_result"]
     }

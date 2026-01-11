@@ -15,13 +15,31 @@
 
     <button onclick="sendInstruction()">Run Agent</button>
 
-    <pre id="output">Waiting for instruction...</pre>
+    <div class="result-box">
+        <h3>Parsed Action</h3>
+        <pre id="parsed">Waiting...</pre>
+    </div>
+
+    <div class="result-box">
+        <h3>Playwright Script</h3>
+        <pre id="script">Waiting...</pre>
+    </div>
+
+    <div class="result-box">
+        <h3>Execution Result</h3>
+        <pre id="result">Waiting...</pre>
+    </div>
+
 </div>
 
 <script>
 function sendInstruction() {
     const instruction = document.getElementById("instruction").value;
-    document.getElementById("output").innerText = "Processing...";
+
+    document.getElementById("parsed").innerText = "Processing...";
+    document.getElementById("script").innerText = "";
+    document.getElementById("result").innerText = "";
+
 
     fetch("/agent", {
         method: "POST",
@@ -30,8 +48,14 @@ function sendInstruction() {
     })
     .then(res => res.json())
     .then(data => {
-        document.getElementById("output").innerText =
-            JSON.stringify(data, null, 2);
+        document.getElementById("parsed").innerText =
+            JSON.stringify(data.parsed_action, null, 2);
+
+        document.getElementById("script").innerText =
+            data.full_playwright_script;
+
+        document.getElementById("result").innerText =
+            data.execution_result;
     });
 }
 </script>
