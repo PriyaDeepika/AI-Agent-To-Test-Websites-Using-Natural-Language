@@ -11,6 +11,14 @@ def index():
 def login_page():
     return render_template("login_page.html")
 
+@app.route("/form_page")
+def form_page():
+    return render_template("form_page.html")
+
+@app.route("/success_page")
+def success_page():
+    return render_template("success_page.html")
+
 @app.route("/agent", methods=["POST"])
 def agent_api():
     data = request.get_json()

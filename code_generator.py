@@ -1,32 +1,41 @@
-def generate_playwright_code(command: dict):
+def generate_playwright_code(commands: list):
+    lines = []
 
-    action = command["action"]
-    selector = command["selector_value"]
-    value = command["value"]
+    for cmd in commands:
+        action = cmd["action"]
+        selector = cmd.get("selector_value")
+        value = cmd.get("value")
 
-    if action == "navigate":
-        action_line = "page.goto('http://localhost:5000/login_page')"
+        if action == "navigate":
+            # 🔥 RESPECT TARGET PAGE
+            lines.append(
+                f"page.goto('http://localhost:5000/{selector}')"
+            )
 
-    elif action == "type":
-        action_line = f"page.fill('#{selector}', '{value}')"
+        elif action == "type":
+            lines.append(f"page.wait_for_selector('#{selector}')")
 
-    elif action == "click":
-        action_line = f"page.click('#{selector}')"
+            # 🔥 Handle dropdown separately
+            if selector == "role_select":
+                lines.append(f"page.select_option('#{selector}', '{value}')")
+            else:
+                lines.append(f"page.fill('#{selector}', '{value}')")
 
-    else:
-        action_line = "print('Unknown action')"
+        elif action == "click":
+            lines.append(f"page.wait_for_selector('#{selector}')")
+            lines.append(f"page.click('#{selector}')")
 
-    # This is only for DISPLAY in UI
+    action_block = "\n".join(lines)
+
+    # For DISPLAY ONLY (not execution)
     full_script = f"""
 from playwright.sync_api import sync_playwright
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(headless=False, slow_mo=1000)
+    browser = p.chromium.launch(headless=False, slow_mo=800)
     page = browser.new_page()
-    page.goto("http://localhost:5000/login_page")
-    page.wait_for_selector("#{selector}")
-    {action_line}
+    {action_block}
     browser.close()
 """.strip()
 
-    return action_line, full_script
+    return action_block, full_script

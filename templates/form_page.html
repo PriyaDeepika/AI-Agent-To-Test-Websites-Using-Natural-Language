@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Form Page</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body class="form-page">
+
+<div class="login-container form-container">
+    <h2>AI Web Testing Form</h2>
+
+    <!-- Name -->
+    <div class="form-group">
+        <input id="name_field" type="text" placeholder="Enter Name">
+    </div>
+
+    <!-- Email -->
+    <div class="form-group">
+        <input id="email_field" type="email" placeholder="Enter Email">
+        <p id="email_error" class="error-text">Enter email in correct format</p>
+    </div>
+
+    <!-- Gender -->
+    <div class="form-group">
+        <label class="field-label">Gender</label>
+        <div class="radio-row">
+            <label>
+                <input type="radio" name="gender" id="gender_male">
+                Male
+            </label>
+            <label>
+                <input type="radio" name="gender" id="gender_female">
+                Female
+            </label>
+            <label>
+                <input type="radio" name="gender" id="gender_other">
+                Other
+            </label>
+        </div>
+    </div>
+
+
+    <!-- Role -->
+    <div class="form-group">
+        <select id="role_select">
+            <option value="">Select Role</option>
+            <option value="student">Student</option>
+            <option value="developer">Developer</option>
+            <option value="tester">Tester</option>
+        </select>
+    </div>
+
+    <!-- About -->
+    <div class="form-group">
+        <textarea id="about_field" placeholder="About you"></textarea>
+    </div>
+
+    <button id="submit_button">Submit</button>
+
+    <p id="error_msg" class="error-text">
+        Please fill all required fields correctly
+    </p>
+</div>
+
+<script>
+document.getElementById("submit_button").onclick = function () {
+    const name = document.getElementById("name_field").value.trim();
+    const email = document.getElementById("email_field").value.trim();
+    const role = document.getElementById("role_select").value;
+
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+    document.getElementById("email_error").style.display =
+        email && !emailValid ? "block" : "none";
+
+    if (!name || !emailValid || !role) {
+        document.getElementById("error_msg").style.display = "block";
+    } else {
+        document.getElementById("error_msg").style.display = "none";
+        window.location.href = "/success_page";
+    }
+};
+</script>
+
+</body>
+</html>

@@ -30,6 +30,11 @@
         <pre id="result">Waiting...</pre>
     </div>
 
+    <div class="result-box">
+        <h3>Test Report</h3>
+        <pre id="report">Waiting...</pre>
+    </div>
+
 </div>
 
 <script>
@@ -49,14 +54,18 @@ function sendInstruction() {
     .then(res => res.json())
     .then(data => {
         document.getElementById("parsed").innerText =
-            JSON.stringify(data.parsed_action, null, 2);
+            JSON.stringify(data.report.parsed_command, null, 2);
 
         document.getElementById("script").innerText =
             data.full_playwright_script;
 
         document.getElementById("result").innerText =
-            data.execution_result;
+            JSON.stringify(data.execution_result, null, 2);
+
+        document.getElementById("report").innerText =
+            JSON.stringify(data.report, null, 2);
     });
+
 }
 </script>
 

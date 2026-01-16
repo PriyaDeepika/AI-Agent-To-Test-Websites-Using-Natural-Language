@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Success</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+
+<div class="login-container">
+    <h2 id="success_heading">Form Submitted</h2>
+
+    <p id="success_msg" style="color:#139860;">
+        Your form was successfully submitted.
+    </p>
+
+    <button id="back_button">Go Back</button>
+</div>
+
+<script>
+document.getElementById("back_button").onclick = function () {
+    window.location.href = "/form_page";
+};
+</script>
+
+</body>
+</html>

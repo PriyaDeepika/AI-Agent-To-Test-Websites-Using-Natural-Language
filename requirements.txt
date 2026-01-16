@@ -1,3 +1,5 @@
 flask
 langgraph
 langchain
+google-generativeai
+python-dotenv
