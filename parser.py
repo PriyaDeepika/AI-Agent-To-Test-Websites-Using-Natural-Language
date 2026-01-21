@@ -1,5 +1,12 @@
 import re
 
+URL_MAP = {
+    "youtube": "https://www.youtube.com",
+    "google": "https://www.google.com",
+    "duckduckgo": "https://duckduckgo.com",
+    "wikipedia": "https://www.wikipedia.org"
+}
+
 def parse_instruction(text: str):
     text = text.lower().strip()
     commands = []
@@ -89,5 +96,22 @@ def parse_instruction(text: str):
             "target": "submit_button",
             "value": None
         })
+
+        # ---------------- EXTERNAL WEBSITE SEARCH ----------------
+    for site, url in URL_MAP.items():
+        if site in text and "search" in text:
+            commands.append({
+                "action": "navigate",
+                "target": url,
+                "value": None
+            })
+
+            match = re.search(r"search (.+)", text)
+            if match:
+                commands.append({
+                    "action": "search",
+                    "target": "search_box",
+                    "value": match.group(1)
+                })
 
     return commands

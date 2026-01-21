@@ -4,8 +4,8 @@ def run_agent(instruction: str):
 
     state = {
         "instruction": instruction,
-        "parsed_command": {},
-        "structured_command": {},
+        "parsed_command": [],
+        # "structured_command": {},
         "playwright_code": "",
         "full_playwright_script": "",
         "execution_result": "",

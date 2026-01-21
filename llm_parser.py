@@ -43,6 +43,24 @@ SUPPORTED ACTIONS
 - navigate
 - type
 - click
+- search
+
+--------------------------------
+URL SUPPORT
+--------------------------------
+- If the instruction contains a full URL (starting with http or https),
+  return it directly as the target in a navigate action.
+- URLs should be used only for navigate actions.
+- Do not modify or shorten the URL.
+
+--------------------------------
+SEARCH RULES
+--------------------------------
+- "search" means entering a query into a search input and submitting it
+- Use "search" only after a navigate action
+- Set "target" as "search_box"
+- Put the search query in "value"
+- If the search box cannot be identified, skip the search step
 
 --------------------------------
 OUTPUT FORMAT (STRICT)
