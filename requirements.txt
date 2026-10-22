@@ -1,5 +1,6 @@
-flask
-langgraph
-google-generativeai
-python-dotenv
-playwright
+flask>=3.0
+langgraph>=0.2
+python-dotenv>=1.0
+playwright>=1.45
+google-generativeai>=0.7   # optional, only used when GEMINI_API_KEY is set
+pytest>=8.0
