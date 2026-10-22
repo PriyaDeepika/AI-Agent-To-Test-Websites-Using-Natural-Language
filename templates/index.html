@@ -1,105 +1,78 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>AI Web Testing Agent</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Probe · AI web testing agent</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body>
-
-<div class="container">
-    <h1>AI Web Testing Agent</h1>
-
-    <textarea id="instruction" rows="4"
-    placeholder="Enter a test instruction (e.g. verify login page)"></textarea>
-
-    <button onclick="sendInstruction()">Run Agent</button>
-
-    <div class="result-box">
-        <h3>Parsed Action</h3>
-        <pre id="parsed">Waiting...</pre>
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="mark">▸</span><span>probe</span><small>web testing agent</small></div>
+    <nav>
+      <button class="nav active" data-view="workspace">Workspace</button>
+      <button class="nav" data-view="history">History</button>
+    </nav>
+    <div class="side-section">
+      <h4>Recent runs</h4>
+      <ul id="recent" class="recent"></ul>
     </div>
+    <div class="side-section sys" id="sys" aria-live="polite"></div>
+  </aside>
 
-    <div class="result-box">
-        <h3>Playwright Script</h3>
-        <pre id="script">Waiting...</pre>
-    </div>
+  <main>
+    <section id="view-workspace" class="view">
+      <header class="topbar">
+        <h1>New test</h1>
+        <div class="runstate" id="runstate" hidden>
+          <span class="dot" id="runDot"></span><span id="runLabel"></span>
+          <code id="runUrl" title="Current browser URL"></code>
+        </div>
+      </header>
 
-    <div class="result-box">
-        <h3>Execution Result</h3>
-        <pre id="result">Waiting...</pre>
-    </div>
+      <div class="cols">
+        <div class="col-left">
+          <label class="field-label" for="instruction">Instruction <span class="hint">plain English — what should the agent do and verify?</span></label>
+          <textarea id="instruction" rows="7" spellcheck="false" placeholder="Open eBay, search for …, select a product, add it to the cart, and verify the cart."></textarea>
 
+          <label class="field-label" for="url">Target URL <span class="hint">optional if the instruction names a site</span></label>
+          <input id="url" type="text" placeholder="https://www.ebay.com" autocomplete="off">
 
-    <button id="downloadBtn" class="download-btn" disabled>
-        ⬇ Download Report
-    </button>
+          <div class="actions">
+            <button id="runBtn" class="primary">Run test</button>
+            <button id="planBtn" class="ghost">Preview plan</button>
+            <button id="cancelBtn" class="ghost danger" hidden>Cancel run</button>
+          </div>
+          <p id="formError" class="error" role="alert" hidden></p>
 
+          <h4 class="sub">Examples</h4>
+          <ul id="examples" class="examples"></ul>
+          <p class="footnote">Real sites may show CAPTCHAs or block automation. The agent never bypasses them; it stops and tells you. Purchases and payments always require your confirmation.</p>
+        </div>
 
+        <div class="col-right">
+          <div id="pausePanel" class="pause" hidden></div>
+          <div id="resultBanner" class="result" hidden></div>
+
+          <div class="panel-head"><h2 id="rightTitle">Planned actions</h2><span id="planMeta" class="muted"></span></div>
+          <div id="notes" class="notes" hidden></div>
+          <ol id="timeline" class="timeline"><li class="empty">Write an instruction and press <b>Preview plan</b> or <b>Run test</b>.</li></ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-history" class="view" hidden>
+      <header class="topbar"><h1>History</h1></header>
+      <table class="history">
+        <thead><tr><th>Outcome</th><th>Instruction</th><th>Scope</th><th>Steps</th><th>Started</th><th></th></tr></thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      <p id="historyEmpty" class="muted" hidden>No runs yet.</p>
+    </section>
+  </main>
 </div>
-
-<script>
-function sendInstruction() {
-    const instruction = document.getElementById("instruction").value.trim();
-    const downloadBtn = document.getElementById("downloadBtn");
-
-    if (!instruction) {
-        document.getElementById("result").innerText =
-            "Please enter an instruction before running.";
-        return;
-    }
-    
-    document.getElementById("parsed").innerText = "Processing...";
-    document.getElementById("script").innerText = "";
-    document.getElementById("result").innerText = "";
-
-    downloadBtn.disabled = true;
-
-    fetch("/agent/run", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ instruction })
-    })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById("parsed").innerText =
-            JSON.stringify(data.parsed_action, null, 2);
-
-        document.getElementById("script").innerText =
-            data.full_playwright_script;
-
-        document.getElementById("result").innerText =
-            JSON.stringify(data.execution_result, null, 2);
-
-        downloadBtn.disabled = false;
-
-        // document.getElementById("report").innerText =
-        //     JSON.stringify(data.report, null, 2);
-    })
-    .catch(err => {
-        document.getElementById("result").innerText = "Error: " + err;
-        downloadBtn.disabled = true;
-    });
-}
-
-// 🔽 DOWNLOAD BUTTON HANDLER
-document.getElementById("downloadBtn").onclick = async () => {
-    const response = await fetch("/agent/report");
-
-    if (!response.ok) {
-        alert("No report available. Run the agent first.");
-        return;
-    }
-
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "test_report.json";
-    a.click();
-};
-</script>
-
+<div id="lightbox" class="lightbox" hidden><img alt="Screenshot"></div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>

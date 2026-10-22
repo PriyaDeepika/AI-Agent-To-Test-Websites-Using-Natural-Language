@@ -1,125 +1,35 @@
-import json
-import google.generativeai as genai
-from config import GEMINI_API_KEY
+"""Optional LLM planner (Gemini). Returns a *validated* plan or raises; the caller falls back to rules.
+The model only emits JSON for the whitelisted action schema – nothing it writes is ever executed as code."""
+from __future__ import annotations
+import json, re
+import config
+from actions import ACTION_SPECS, validate_plan
 
-genai.configure(api_key=GEMINI_API_KEY)
+SYSTEM_PROMPT = f"""You convert a natural-language web-testing instruction into a JSON plan for a browser agent.
+Return ONLY a JSON array. Each item: {{"action": str, "target": str|null, "value": str|null, "description": str}}.
 
-# model = genai.GenerativeModel("gemini-1.5-flash")
-model = genai.GenerativeModel("models/gemini-flash-lite-latest")
-
-SYSTEM_PROMPT = """
-You are an AI Web Testing Agent.
-
-Your task is to convert a natural language web testing instruction
-into a SEQUENCE of executable browser actions.
-
---------------------------------
-KNOWN PAGES
---------------------------------
-- login_page
-- form_page
-- success_page
-
---------------------------------
-KNOWN ELEMENT IDS
---------------------------------
-Login Page:
-- username_field
-- submit_button
-
-Form Page:
-- name_field
-- email_field
-- gender_male
-- gender_female
-- gender_other
-- role_select
-- about_field
-- submit_button
-
---------------------------------
-SUPPORTED ACTIONS
---------------------------------
-- navigate
-- type
-- click
-- search
-
---------------------------------
-URL SUPPORT
---------------------------------
-- If the instruction contains a full URL (starting with http or https),
-  return it directly as the target in a navigate action.
-- URLs should be used only for navigate actions.
-- Do not modify or shorten the URL.
-
---------------------------------
-SEARCH RULES
---------------------------------
-- "search" means entering a query into a search input and submitting it
-- Use "search" only after a navigate action
-- Set "target" as "search_box"
-- Put the search query in "value"
-- If the search box cannot be identified, skip the search step
-
---------------------------------
-OUTPUT FORMAT (STRICT)
---------------------------------
-Return ONLY valid JSON.
-
-Example format:
-
-[
-  {
-    "action": "navigate",
-    "target": "login_page",
-    "value": null
-  },
-  {
-    "action": "type",
-    "target": "username_field",
-    "value": "admin"
-  },
-  {
-    "action": "click",
-    "target": "submit_button",
-    "value": null
-  }
-]
-
---------------------------------
-RULES
---------------------------------
-- Always preserve the order of actions
-- Use ONLY the element IDs listed above
-- Use exact page names when navigating
-- If value is not required, set it to null
-- If an instruction implies login, navigate to login_page first
-- After successful login, navigate to form_page
-- Clicking submit on form_page leads to success_page
-- Map synonyms intelligently:
-    - "login", "sign in" → click submit_button on login_page
-    - "submit", "send", "finish" → click submit_button
-    - "enter", "fill", "type" → type action
-- If something is unclear or unsupported, skip that step
-- If nothing can be understood, return an empty list []
-
---------------------------------
-IMPORTANT
---------------------------------
-Return ONLY JSON. Do NOT add explanations or extra text.
-"""
+Allowed actions: {', '.join(ACTION_SPECS)}.
+- open: target = full URL. search: value = the query. click: target = short description of the element.
+- type: target = field description, value = text. select_option: target = control ("size"), value = option or null if the user did not say.
+- select_result: target = product|video|article|result (pick a relevant search result).
+- login: value = "username\\npassword" (empty strings if not given; never invent credentials).
+- add_to_cart, verify_cart, verify_video, verify_page need no target. verify_text/verify_url: value = expected text.
+- apply_filter: target = "price" or a filter label, value = amount/label or null.
+Rules: keep the user's order; never invent values the user did not give; never add purchase/payment/checkout steps
+unless explicitly requested; end with verification steps that match what the user wants verified. No prose, no markdown."""
 
 
+def available() -> bool:
+    return bool(config.GEMINI_API_KEY)
 
-def parse_instruction_llm(instruction: str) -> list:
-    response = model.generate_content(
-        f"{SYSTEM_PROMPT}\nInstruction: {instruction}"
-    )
 
-    try:
-        data = json.loads(response.text)
-        return data if isinstance(data, list) else []
-    except Exception:
-        return []
-
+def parse_instruction_llm(instruction: str, start_url: str | None = None):
+    if not available():
+        raise RuntimeError("GEMINI_API_KEY is not configured")
+    import google.generativeai as genai  # lazy: optional dependency
+    genai.configure(api_key=config.GEMINI_API_KEY)
+    model = genai.GenerativeModel(config.GEMINI_MODEL)
+    prompt = f"{SYSTEM_PROMPT}\n\nTarget URL (may be empty): {start_url or ''}\nInstruction: {instruction}"
+    text = model.generate_content(prompt).text.strip()
+    text = re.sub(r"^```(?:json)?|```$", "", text, flags=re.M).strip()
+    return validate_plan(json.loads(text))

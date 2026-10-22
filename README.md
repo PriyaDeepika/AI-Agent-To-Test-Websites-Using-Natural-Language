@@ -1,174 +1,106 @@
-# AI Web Testing Agent Using Natural Language
+# Probe — AI web testing agent (natural language → real browser)
 
-## 📌 Project Overview
+Describe a test in plain English; the agent plans it, drives a real Chromium browser with Playwright, **verifies what actually happened**, and produces evidence (screenshots, per-step details) and downloadable JSON/HTML reports.
 
-This project implements an AI-powered web testing agent that converts natural language instructions into automated end-to-end (E2E) browser tests using Playwright.
+![Run view](docs/screenshots/03-passed-run.png)
 
-Users can provide human-readable test instructions such as:
-- "open login page and type admin"
-- "fill the form with name and email and submit"
-- "go for youtube and search linux administration"
+## Verification status — read this first
 
-The agent parses these instructions, generates executable Playwright automation steps, executes them on a real browser, and displays the results through a web-based UI.
+| Area | Status | Evidence |
+|---|---|---|
+| Parser, validation, safety policy, storage, reports, API | **Verified** | 51 unit/API tests pass |
+| Agent loop on the **local demo site** (3 option layouts, cookie overlay, delayed JS results, login, budget, errors, CAPTCHA wall, purchase confirmation, cancel) | **Verified (local regression)** | 22 browser tests pass, incl. UI tests |
+| **eBay / YouTube / other real websites** | **NOT verified yet** | The environment this was built in had no outbound internet (DNS failed for ebay.com, youtube.com, even example.com), so no real-site run could be executed. `tests/test_real_sites.py` is ready; run it on your machine (below). |
+| Optional LLM planner (Gemini) | **Untested** | No API key was available. Falls back to the rule parser on any failure. |
 
-The system is designed with a modular agent architecture, using LangGraph to orchestrate the workflow and Flask to serve both the UI and sample test pages.
+Local-demo passes are *regression evidence for the agent's mechanics only*. Every report labels its scope (`real_website` vs `local_regression`) from the hosts actually visited. Real sites change their DOM, A/B test, and often show bot walls; expect some real-site runs to end **BLOCKED** (reported honestly, never as a pass) or need heuristic tuning in `skills.py`.
 
----
+## Quick start
 
-## 🎯 Key Features
-
-- Natural Language → Browser Actions
-- LangGraph-based agent workflow
-- Real browser automation using Playwright (Chromium)
-- Interactive web UI to run and view tests
-- Downloadable execution report
-- Rule-based parser with LLM fallback support
-- Clear PASS / FAIL execution results
-
----
-
-## 🧱 Project Structure
-
-```
-project/
-│
-├── app.py                  # Flask application entry point
-├── agent.py                # Agent interface to LangGraph workflow
-├── workflow.py             # LangGraph state machine definition
-├── parser.py               # Rule-based instruction parser
-├── llm_parser.py           # LLM-based instruction parser (optional)
-├── code_generator.py       # Playwright code generation module
-├── executor.py             # Playwright execution engine
-├── reporter.py             # Test report generator
-├── config.py               # Environment configuration
-├── requirements.txt        # Python dependencies
-│
-├── templates/
-│   ├── index.html          # Agent UI
-│   ├── login_page.html     # Sample login page
-│   ├── form_page.html      # Sample form page
-│   └── success_page.html   # Sample success page
-│
-├── static/
-│   └── css/
-│       ├── style.css       # Main UI styling
-│       └── login.css       # Sample test page styling
-│
-├── screenshots/            # Project screenshots (UI, results)
-│
-└── venv/                   # Python virtual environment (ignored in Git)
-```
-
----
-
-## ⚙️ Technology Stack
-
-- Python 3.x
-- Flask – Web server and UI rendering
-- LangGraph – Agent workflow orchestration
-- Playwright (Python) – Browser automation
-- HTML / CSS / JavaScript – Frontend UI
-- google-generativeai – Optional LLM-based instruction parsing
-
----
-
-## 🧠 System Architecture
-
-The agent follows a state-driven workflow:
-
-1. Instruction Input – User enters a natural language test instruction
-2. Instruction Parsing – Parsed using rule-based logic or LLM (if available)
-3. Command Structuring – Actions converted into structured commands
-4. Playwright Code Generation – Browser actions are generated dynamically
-5. Test Execution – Playwright runs the test in a real browser
-6. Result Display – PASS / FAIL result shown in UI and downloadable report
-
-LangGraph manages this flow by passing a shared state between workflow nodes.
-
----
-
-## 🔄 LangGraph Workflow
-
-The LangGraph workflow consists of the following nodes:
-
-- Parser Node – Extracts actions from instructions
-- Code Generator Node – Produces Playwright commands
-- Executor Node – Executes tests and captures results
-- Reporter Node – Generates execution summary
-
-Each node updates only the relevant part of the shared agent state.
-
----
-
-## 📝 Example Instructions
-
-open login page and type admin and submit
-
-fill the form with name as john and email as john@gmail.com and submit
-
-go for youtube and search linux administration
-
----
-
-## ▶️ How to Run the Project
-
-1. Clone the repository
-
-```
-git clone https://github.com/your-username/AI-Agent-Test-Websites.git  
-cd AI-Agent-Test-Websites
-```
-
-2. Create and activate virtual environment
-
-```
-python -m venv venv  
-source venv/bin/activate   (Windows: venv\Scripts\activate)
-```
-
-3. Install dependencies
-
-```
+```bash
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+playwright install chromium
+cp .env.example .env            # set BROWSER_HEADLESS=false to watch the browser
+python app.py                   # http://127.0.0.1:5000
 ```
 
-4. Install Playwright browser
+No API key is needed. Add `GEMINI_API_KEY` to `.env` only if you want the LLM planner for complex instructions.
+
+### Try the real-site demonstration on your machine
+
+```bash
+BROWSER_HEADLESS=false python app.py     # then pick the “eBay” example in the UI
+# or headless via tests (results are appended to data/real_site_results.json):
+RUN_REAL_SITE_TESTS=1 pytest -m real_site -s
+```
+Run non-headless the first time: if a site shows a CAPTCHA the run pauses (“Waiting for you”); solve it yourself in the browser window and press **Continue**.
+
+## What you can write
 
 ```
-playwright install
+Open eBay, search for Nike shoes for women, select a suitable product, choose size 8,
+add it to the cart, and verify that the correct item appears in the cart.
+
+Open YouTube, search for Linux administration tutorials, open a relevant video, and verify that it loads.
+
+Log in with username demo and password test1234, then verify that "Welcome back" is displayed.
+
+Search for women under $50, select a suitable product, choose size 8, add it to the cart.
 ```
+Tips: name the site or fill the *Target URL*; put expected text **in quotes** for a hard check; give concrete option values (“size 8”). If you leave a value vague (“choose the required size”), the agent asks you instead of guessing. **Preview plan** shows the validated steps without opening a browser.
 
-5. Run the application
+## How it works
 
+![Architecture](docs/architecture.png)
+
+`plan → observe → act → verify → (recover | wait_user) → … → report`, coordinated by **LangGraph** (`workflow.py`).
+
+* **Plan** — `parser.py` (rules, no key needed) or `llm_parser.py` (optional) emit a list of whitelisted, validated actions (`actions.py`). The LLM never writes code that gets executed.
+* **Observe** — `observer.py` snapshots visible interactive elements (text, labels, roles, price, container context) and page state; blocks/CAPTCHAs are detected.
+* **Act** — `skills.py` has generic skills (`search`, `select_result`, `select_option`, `add_to_cart`, `login`, `apply_filter`, `click`, `type`, `verify_*`). Elements are found by scoring the live page against the *description* — there are no per-site scripts.
+* **Verify** — each skill reads back the outcome: search results mention the query; the opened page matches the chosen title; a dropdown/select reads back the chosen value; add-to-cart needs a confirmation signal; **`verify_cart` opens the real cart and matches the product** (item id / title words) and reports the matched evidence.
+* **Recover** — bounded retries: dismiss overlays, scroll, reload, try the next candidate result. Unrecoverable → clear failure.
+* **Report** — outcome derived strictly from step results: `PASSED` (all verified) · `INCONCLUSIVE` (some steps could not be machine-verified) · `FAILED` · `BLOCKED` (human needed / declined) · `CANCELLED`. Steps never reached are `skipped`, never `passed`.
+
+### Safety
+* Only `http/https`; private/link-local/internal addresses blocked (localhost allowed for the demo); optional `BLOCKED_DOMAINS`.
+* **Never bypasses CAPTCHAs or access controls** — pauses for a human; gives up after 3 unresolved attempts.
+* **Purchases/payments/checkout** (“Buy it now”, “Place order”, …) require explicit confirmation in the UI; declining stops the run. The agent never adds checkout steps on its own.
+* Limits: `MAX_TOTAL_ACTIONS`, `MAX_STEP_RETRIES`, `RUN_TIMEOUT_S`, `USER_RESPONSE_TIMEOUT_S`. Credentials are masked everywhere (UI, DB, reports) and requested if missing, never invented.
+
+## Interface
+Workspace (instruction, URL, examples, plan preview, live timeline with current action, browser URL, status, errors, evidence and screenshots, pause panel for confirmations/inputs) · History (persistent, SQLite) · Downloads: HTML report (self-contained, screenshots embedded), JSON report, and a replay Playwright script generated from recorded selectors.
+
+| Plan preview | Waiting for input | Failed run |
+|---|---|---|
+| ![](docs/screenshots/01-plan-preview.png) | ![](docs/screenshots/02-awaiting-input.png) | ![](docs/screenshots/04-failed-run.png) |
+
+## Tests
+```bash
+pytest -m "not real_site"      # 73 tests: unit, API, browser regression (local demo), UI (~2 min)
+pytest tests/test_parser.py tests/test_actions_policy.py tests/test_store_reporter.py tests/test_api.py   # fast, no browser
+RUN_REAL_SITE_TESTS=1 pytest -m real_site -s     # real websites (needs internet)
 ```
-python app.py
+`tests/test_browser_regression.py` is explicitly *local regression*. `tests/test_real_sites.py` reports PASSED, or BLOCKED as an xfail — never a silent pass.
+
+## Project layout
 ```
+app.py            Flask API + UI host        workflow.py   LangGraph state machine
+agent.py          run manager (threads)      executor.py   Chromium session + run lifecycle
+parser.py         rule-based planner         llm_parser.py optional Gemini planner
+actions.py        action schema/validation   policy.py     URL + consequential-action + CAPTCHA policy
+observer.py       page snapshot + scoring    skills.py     generic browser skills
+runtime.py        per-run state, pauses      store.py      SQLite
+reporter.py       outcome, JSON/HTML         code_generator.py  replay-script export
+demo.py           local regression sites (/demo/*)         templates/, static/   UI
+```
+Legacy pages `/login_page`, `/form_page`, `/success_page` and the old form phrase (“fill the form with name as …”) still work.
 
-Open browser at:
-
-http://127.0.0.1:5000
-
----
-
-## ⚠️ Notes & Limitations
-
-- External website search is performed using keyboard-based interaction
-- Not all websites expose searchable inputs
-- LLM parsing is optional and may be disabled when API quota is exceeded
-- Rule-based parser ensures system works without LLM access
-
----
-
-## 🚀 Future Enhancements
-
-- Screenshot capture on test failure
-- Test history and execution logs
-- Site-specific search strategies
-- Headless execution mode
-- CI/CD integration
-
----
-
-## 📜 License
-
-This project is intended for educational and demonstration purposes.
+## Known limitations
+* Heuristics, not magic: unusual widgets (shadow DOM, iframes, canvas, heavily customised dropdowns) may not be found; the step then fails with a clear message.
+* Option verification relies on what the page exposes; if no selected state is readable the step is `unverified`, making the run `INCONCLUSIVE` rather than `PASSED`.
+* Add-to-cart that shows no confirmation is `unverified` until `verify_cart` confirms the contents.
+* The LLM only *plans*; it does not choose elements at runtime. Vague claims (“looks professional”) are reported `unverified`.
+* Bot protection on large sites may block automation; the agent stops rather than evading it. Respect each site's terms of service.
+* Max two concurrent runs; iframes are not traversed.
